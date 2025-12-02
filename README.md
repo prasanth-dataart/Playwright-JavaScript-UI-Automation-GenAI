@@ -122,6 +122,17 @@ This project includes a `Jenkinsfile` for CI/CD pipeline integration with Jenkin
 
 3. **Allure server** or local Allure CLI support
 
+### Note for Jenkins Windows agents
+
+- The provided `Jenkinsfile` detects the agent OS and uses `sh` on Unix agents and `bat` on Windows agents. If your Jenkins node runs Windows, ensure:
+   - Node.js is installed and `npm` is available on the PATH for the Jenkins service user.
+   - Playwright browsers are installed on the agent (run `npx playwright install` or `npx playwright install-deps` as part of the node setup).
+   - The Allure CLI is installed or the Allure plugin is configured correctly on the Jenkins master/agent.
+
+If you see an error like `Cannot run program "sh" ... CreateProcess error=2` this means the pipeline tried to use a Unix shell on a Windows node; ensure your node label/agent type matches the environment or run the job on a Unix agent.
+
+Tip: this repository's `Jenkinsfile` now performs an explicit checkout and prints diagnostics (PATH, git location, git version) before attempting the clone. If you still get `Selected Git installation does not exist`, configure Git under Jenkins → Manage Jenkins → Global Tool Configuration → Git installations, or ensure `git.exe` is available in the Jenkins agent's PATH.
+
 ### Setup Steps
 
 1. **Create a new Pipeline job in Jenkins:**
