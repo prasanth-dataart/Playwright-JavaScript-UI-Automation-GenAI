@@ -10,10 +10,7 @@ class DashboardPage {
         return await this.pageTitle.textContent();
     }
 
-    async navigateToSettings() {
-        // Not applicable for Sauce Demo; placeholder
-        throw new Error('navigateToSettings not implemented for this site');
-    }
+
 }
 
 module.exports = DashboardPage;
