@@ -19,23 +19,45 @@ pipeline {
             steps {
                 echo '===== Checking out source code (explicit) ====='
                 script {
-                    // Diagnostic info to help when Git is not found on Windows agents
-                    if (isUnix()) {
-                        sh 'echo PATH=$PATH'
-                        sh 'which git || true'
-                        sh 'git --version || true'
-                        // clone into workspace
-                        sh "git clone ${env.GIT_URL} . || true"
-                        sh "git rev-parse --abbrev-ref HEAD || true"
+                    // Perform explicit GitSCM checkout using optional credentials if provided.
+                    // Set repo URL and branch via environment variables or defaults.
+                    def repoUrl = env.GIT_URL ?: 'https://github.com/prasanth-dataart/Playwright-JavaScript-UI-Automation-GenAI'
+                    def branchName = env.BRANCH_NAME ?: 'main'
+                    def credentialsId = env.GIT_CREDENTIALS ?: ''
+
+                    echo "Checking out ${repoUrl} branch ${branchName}"
+
+                    def userRemote
+                    if (credentialsId?.trim()) {
+                        echo "Using credentialsId: ${credentialsId}"
+                        userRemote = [[url: repoUrl, credentialsId: credentialsId]]
                     } else {
-                        bat 'echo %PATH%'
-                        bat 'where git || echo git-not-found'
-                        bat 'git --version || echo git-version-failed'
-                        // clone into workspace (Windows)
-                        bat "git clone %GIT_URL% . || echo clone-failed"
-                        bat 'git rev-parse --abbrev-ref HEAD || echo no-branch'
+                        userRemote = [[url: repoUrl]]
                     }
-                    // If you prefer to use Jenkins' built-in checkout, replace the above with `checkout scm`
+
+                    try {
+                        checkout([$class: 'GitSCM', branches: [[name: "*/${branchName}"]], doGenerateSubmoduleConfigurations: false, extensions: [], userRemoteConfigs: userRemote])
+                    } catch (err) {
+                        echo "Explicit GitSCM checkout failed: ${err}"
+                        echo 'Running diagnostics and attempting fallback clone only if workspace empty'
+                        if (isUnix()) {
+                            sh 'echo PATH=$PATH'
+                            sh 'which git || true'
+                            sh 'git --version || true'
+                            sh '''
+                                if [ -z "$(ls -A .)" ]; then
+                                  git clone ${repoUrl} . || true
+                                else
+                                  echo "Workspace not empty, skipping clone"
+                                fi
+                            '''
+                        } else {
+                            bat 'echo %PATH%'
+                            bat 'where git || echo git-not-found'
+                            bat 'git --version || echo git-version-failed'
+                            bat "if not exist .git ( git clone ${repoUrl} . ) else ( echo Workspace not empty, skipping clone )"
+                        }
+                    }
                 }
             }
         }
@@ -94,11 +116,19 @@ pipeline {
         always {
             echo '===== Collecting test results ====='
             
-            // Publish Allure report
-            allure includeProperties: false,
-                   jdk: '',
-                   results: [[path: 'allure-results']]
-            
+            // Publish Allure report if plugin is available; otherwise archive artifacts so report can be downloaded
+            script {
+                try {
+                    allure includeProperties: false,
+                           jdk: '',
+                           results: [[path: 'allure-results']]
+                    echo 'Allure report published via plugin.'
+                } catch (err) {
+                    echo "Allure plugin not available or publish failed: ${err}"
+                    echo 'Archiving allure artifacts instead.'
+                }
+            }
+
             // Archive test results and Allure report
             archiveArtifacts artifacts: 'allure-report/**,allure-results/**',
                              allowEmptyArchive: true,
