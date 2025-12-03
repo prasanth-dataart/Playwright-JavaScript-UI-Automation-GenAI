@@ -27,11 +27,6 @@ build/
 .env.local
 .env.*.local
 
-# Jenkins
-.jenkins/
-jenkins-workspace/
-build.log
-
 # Logs
 logs/
 *.log
