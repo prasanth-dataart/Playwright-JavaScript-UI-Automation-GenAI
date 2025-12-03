@@ -6,14 +6,14 @@
   "scripts": {
     "clean:allure": "rimraf ./allure-results",
     "clean:test-results": "rimraf ./test-results",
-    "setup:allure": "node allure-setup.js",
-    "pretest": "npm run clean:allure && npm run clean:test-results && npm run setup:allure",
+    "clean:reports": "rimraf ./test-results ./allure-report",
     "test": "playwright test",
     "test:e2e": "playwright test tests/e2e",
-    "test:api": "playwright test tests/api",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
     "allure:generate": "allure generate ./allure-results --clean -o ./allure-report",
     "allure:open": "allure open ./allure-report",
-    "test:allure": "npm run clean:allure && npm run clean:test-results && npm run setup:allure && playwright test && npm run allure:generate && npm run allure:open"
+    "test:allure": "npm run clean:allure && (playwright test || echo 'Tests failed, generating report anyway') && npm run allure:generate && npm run allure:open"
   },
   "keywords": [
     "playwright",
@@ -25,6 +25,7 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.4.5",
     "playwright": "^1.0.0"
   },
   "devDependencies": {
